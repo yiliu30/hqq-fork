@@ -50,6 +50,7 @@ class Quantizer:
         axis=0,
         bitpack=True,
     ):
+        print(f"[Quantizer][quantize] start quantize ..... ")
         assert nbits in Quantizer.SUPPORTED_BITS, (
             "nbits=" + str(nbits) + " not supported."
         )

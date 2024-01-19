@@ -26,7 +26,7 @@ class HQQLinear(torch.nn.Module):
 
         if del_orig:
             del linear_layer
-        if opition.use_cuda():
+        if opition.use_cuda:
             torch.cuda.empty_cache()
 
     # Set backends

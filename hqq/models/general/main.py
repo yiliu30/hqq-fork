@@ -7,7 +7,7 @@ quant_config = BaseQuantizeConfig(nbits=4, group_size=64)
 
 ######################################
 # If use GPU
-opition.use_cuda = False
+opition.use_cuda = True
 if opition.use_half:
     assert opition.use_cuda, "Please use `cuda` if use `half`."
 ######################################
@@ -55,8 +55,10 @@ def one_of_tag(name):
 def patch_func(module, name):
     print(f"patch for module : {name}")
     if one_of_tag(name):
+        print(f"[patch_func] Replace {name} with HQQ")
         return HQQLinear(module, quant_config)
     else:
+        print(f"[patch_func] {name} is a linear module but not replace it")
         if opition.use_half:
             return module.half().cuda()
         else:
@@ -65,9 +67,12 @@ def patch_func(module, name):
 
 def replace_linear_with_hqq_linear(module, quant_config, prefix=[]):
     for name, child in module.named_children():
+        cur_child_name = ".".join(prefix + [name])
         if isinstance(child, nn.Linear):
-            setattr(module, name, patch_func(child, ".".join(prefix)))
+            print(f"{cur_child_name} is a instance of linear")
+            setattr(module, name, patch_func(child, cur_child_name))
         elif name in nonlinear_tags:
+            print(f"{cur_child_name} is one of non linear tags")
             setattr(module, name, child.half().cuda() if opition.use_half else child)
         else:
             replace_linear_with_hqq_linear(child, quant_config, prefix=prefix + [name])
@@ -85,6 +90,7 @@ model_id = (
     "/home/yliu7/workspace/gpt-fast/checkpoints/meta-llama/Llama-2-7b-chat-hf/tmp"
 )
 model, tokenizer = get_float_model(model_id)
+print(model)
 if opition.use_cuda:
     model.to("cuda")
 replace_linear_with_hqq_linear(model, quant_config)

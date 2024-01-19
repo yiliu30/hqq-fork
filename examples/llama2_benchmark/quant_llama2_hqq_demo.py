@@ -4,7 +4,10 @@ hf_auth    = None #HuggingFace token
 cache_path = ''   #cache directory to store data
 
 #Chose a model
-model_id  = "meta-llama/Llama-2-7b-hf" 
+# model_id  = "meta-llama/Llama-2-7b-hf" 
+model_id = (
+    "/home/yliu7/workspace/gpt-fast/checkpoints/meta-llama/Llama-2-7b-chat-hf/tmp"
+)
 #model_id  = "meta-llama/Llama-2-13b-hf" 
 #model_id  = "meta-llama/Llama-2-70b-hf" 
 
