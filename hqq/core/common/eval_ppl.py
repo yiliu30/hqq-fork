@@ -2,6 +2,7 @@ from datasets import load_dataset
 import torch, time
 import numpy as np
 from tqdm import tqdm
+from hqq.core.common.utils import dump_elapsed_time
 
 import gc
 
@@ -12,6 +13,7 @@ def cleanup():
 
 
 # Adapted from https://huggingface.co/transformers/v4.2.2/perplexity.html
+@dump_elapsed_time("Evaluate wikitext2 time .. ")
 def eval_wikitext2(model, tokenizer, max_length=1024, stride=512, verbose=True):
     model.eval()
     tokenizer.pad_token = tokenizer.eos_token

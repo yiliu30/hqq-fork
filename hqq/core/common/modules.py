@@ -1,6 +1,6 @@
 from hqq.core.common.quant_utils import Quantizer, HQQBackend
 import torch
-from hqq.core.common.utils import opition
+from hqq.core.common.config import opition
 
 
 # Main linear layer
@@ -15,9 +15,10 @@ class HQQLinear(torch.nn.Module):
         self.bias = None
         self.quant_config = quant_config
         self.set_backend(HQQLinear.backend)  # Default backend
+        # print(f"Create HQQ from module {getattr(linear_layer, 'name', None)} .....")
 
         if linear_layer is not None:
-            if linear_layer.bias:
+            if linear_layer.bias is not None:
                 if opition.use_half:
                     self.bias = linear_layer.bias.half().cuda()
                 else:

@@ -1,4 +1,4 @@
-from hqq.core.common.utils import opition
+from hqq.core.common.config import opition
 from hqq.core.bitpack import BitPack
 
 # from hqq.core.optimize import optimize_weights_proximal

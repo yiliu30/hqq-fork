@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-from hqq.core.common.utils import opition
+from hqq.core.common.config import opition
 
 
 # Proximal solver || W - dequantize(quantize(W))||_p^p
