@@ -8,7 +8,7 @@ from ..core.peft import HQQLinearLoRA
 from ..models.hf.base import AutoHQQHFModel
 from ..backends.torchao import patch_hqq_to_aoint4
 from ..backends.marlin import patch_hqq_to_marlin
-
+from ..backends.qbits import patch_hqq_to_qbits
 
 def patch_linearlayers(model, fct, patch_param=None, verbose=False):
     base_class = model.base_class if (hasattr(model, "base_class")) else AutoHQQHFModel
@@ -94,6 +94,10 @@ def prepare_for_inference(model, allow_merge=False, backend="default", verbose=F
         cleanup()
     if backend == "marlin":
         patch_linearlayers(model, patch_hqq_to_marlin, verbose=verbose)
+        cleanup()
+
+    if backend == "qbits":
+        patch_linearlayers(model, patch_hqq_to_qbits, verbose=verbose)
         cleanup()
 
     patch_linearlayers(
