@@ -234,12 +234,32 @@ def patch_hqq_to_qbits(layer, patch_params=None):
     z = hqq_layer.meta["zero"]
     s = hqq_layer.meta["scale"].t()
     
+    # float_zp, float_scale
+    # Int_w
+    # float_tensor: [K, N]
+    # [K, N] = [K, N] - [1, N]   * [1, N]
+    # dq = (Int_w - float_zp) * float_scale
+    # [1, N] = [1, N]
+    # Int_zp = round(float_zp)
+    # [K, N] = [K, N] - [1, N]   * [1, N] 
+    # dq = (Int_w - Int_zp) * new_float_scale
+
+    # new_float_scale =  (Int_w - float_zp) * float_scale / (Int_w - Int_zp)
+    #                    ([K, N] - [1, N] ) * [1, N]      / ([K, N]- [1, N])  ==> [K, N]
+    
+    
+    # dq = (Int_w - float_zp) * float_scale
+    # Int_zp = round(float_zp)
+    # dq = (Int_w - Int_zp) * new_float_scale
+    
     # W_r = (W_r - z_shift) * s
     # W_r = (W_r - z_shift) * s
     
     #          [K, N] - [K, N]    [K, N]    [1, N]     [1, N]
     # y = X @ ((W_int - z_shift + z_shift - float_z) * scale)
-    # y = X @ (W_int - z_shift) * scale + X @ (z_shift - float_z) * scale
+    # y = X @ (W_int - z_shift) * scale + X @ ((z_shift - float_z) * scale)
+    #     woq kernel + small matmul
+    # y = qbits.woq_linear(W_int, scale, X) + torch.matmul(X.sum(dim=-1, keepdim=True), (z_shift - float_z) * scale)
 
     if type(z) in [torch.Tensor, torch.nn.Parameter]:
         z = z.t()
