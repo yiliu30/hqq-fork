@@ -16,7 +16,8 @@ np.random.seed(seed)
 ##########################################################################################################################################################
 import torch, os
 
-BACKEND = "default" 
+BACKEND = "default"
+BACKEND = "qbits"
 
 os.environ["TOKENIZERS_PARALLELISM"]  = "1"
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -24,12 +25,14 @@ torch.backends.cudnn.allow_tf32       = True
 
 cache_path     = '.'
 # model_id       = "/models/Llama-2-7b-chat-hf/"
-model_id = "/models/TinyLlama-1.1B-Chat-v1.0"
+# model_id = "/models/TinyLlama-1.1B-Chat-v1.0"
+model_id = "/mnt/disk4/modelHub/Llama-2-7b-chat-hf/"
+model_id = "/mnt/disk4/modelHub/TinyLlama-1.1B-Chat-v1.0/"
 # model_id = "/models/opt-125m"
 compute_dtype  = torch.float32 #int4 kernel only works with float16
 # device         = 'cuda:0'
 device = "cpu"
-
+from tiny_benchmark import benchmodel
 group_size = 64
 
 ##########################################################################################################################################################
@@ -37,7 +40,7 @@ from hqq.engine.hf import HQQModelForCausalLM, AutoTokenizer
 from hqq.core.quantize import *
 
 tokenizer    = AutoTokenizer.from_pretrained(model_id, cache_dir=cache_path)
-model        = HQQModelForCausalLM.from_pretrained(model_id, cache_dir=cache_path, torch_dtype=compute_dtype, attn_implementation="sdpa")
+model        = HQQModelForCausalLM.from_pretrained(model_id, cache_dir=cache_path, torch_dtype=compute_dtype, )#attn_implementation="sdpa")
 quant_config = BaseQuantizeConfig(nbits=4, group_size=group_size, quant_scale=False, quant_zero=False, axis=1)
 print(model)
 model.quantize_model(quant_config=quant_config, compute_dtype=compute_dtype, device=device)
@@ -93,13 +96,45 @@ def dump_func_time(func):
 # Benchmark hqq + qbits
 # ==-------------------------------------------------------------------------==
 import sys
-sys.path.append("/home/yliu7/workspace/inc/3rd-party/tiny_bench")
-import benchmark as bench
+sys.path.append("./")
+# from .tiny_benchmark import benchmodel
 
-bench.benchmodel(momodel_and_tokenizer=(model, tokenizer), pretrained=True)
+benchmodel(model_and_tokenizer=(model, tokenizer), pretrained=True, batch_size=4)
+
+
+# ==-------------------------------------------------------------------------==
+# Benchmark hqq
+# ==-------------------------------------------------------------------------==
+"""
+- Default
+|   Batch Size |   Prefill Length |   Decode Length |   Prefill tokens/s |   Decode tokens/s | Memory (VRAM)   |
+|-------------:|-----------------:|----------------:|-------------------:|------------------:|:----------------|
+|            1 |               32 |              32 |              54.68 |              2.18 | 1.87 GB (0.00%) |
+|            1 |               64 |              64 |             104.67 |              2.18 | 1.91 GB (0.00%) |
+|            1 |              128 |             128 |             192.44 |              2.04 | 2.13 GB (0.00%) |
+
+
+Version: Qbits
+|   Batch Size |   Prefill Length |   Decode Length |   Prefill tokens/s |   Decode tokens/s | Memory (VRAM)   |
+|-------------:|-----------------:|----------------:|-------------------:|------------------:|:----------------|
+|            1 |               32 |              32 |             241.11 |              1.98 | 2.72 GB (0.00%) |
+|            1 |               64 |              64 |             395.94 |              1.93 | 2.76 GB (0.00%) |
+|            1 |              128 |             128 |             570.89 |              1.79 | 2.89 GB (0.00%) |
+
+Version: Qbits
+|   Batch Size |   Prefill Length |   Decode Length |   Prefill tokens/s |   Decode tokens/s | Memory (VRAM)   |
+|-------------:|-----------------:|----------------:|-------------------:|------------------:|:----------------|
+|            4 |               32 |              32 |             554.12 |             75.58 | 2.87 GB (0.00%) |
+|            4 |               64 |              64 |             718.42 |             75.33 | 2.93 GB (0.00%) |
+|            4 |              128 |             128 |             827.39 |             73.95 | 3.00 GB (0.00%) |
+|            4 |              256 |             256 |             786.73 |             72.56 | 3.06 GB (0.00%) |
+|            4 |              512 |             512 |             780.28 |             72.82 | 3.18 GB (0.00%) |
+|            4 |             1024 |            1024 |             724.8  |             74.46 | 3.16 GB (0.00%) |
+|            4 |             2048 |            2048 |             697.49 |             74.26 | 3.18 GB (0.00%) |
 # ==-------------------------------------------------------------------------==
 #  The output
 # ==-------------------------------------------------------------------------==
+"""
 """
 
 QBitsLinear(in_features=5632, out_features=2048, bias=False, group_size=64)

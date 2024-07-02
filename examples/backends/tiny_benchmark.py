@@ -5,12 +5,13 @@ import numpy as np
 import os
 import pandas as pd
 import psutil
-from awq import AutoAWQForCausalLM
-from awq.models.base import BaseAWQForCausalLM
-from awq.utils.utils import get_best_device, qbits_available
+# from awq import AutoAWQForCausalLM
+# from awq.models.base import BaseAWQForCausalLM
+# from awq.utils.utils import get_best_device, qbits_available
 from transformers import AutoTokenizer, GenerationConfig, LogitsProcessor, LogitsProcessorList
 
-DEVICE = get_best_device()
+DEVICE = "cpu"
+qbits_available = True
 if DEVICE == "cpu":
     if qbits_available:
         from intel_extension_for_transformers.qbits import check_isa_supported
@@ -86,7 +87,7 @@ def generate_torch(model, input_ids, n_generate):
     return context_time, generate_time
 
 
-def generate_hf(model: BaseAWQForCausalLM, input_ids, n_generate):
+def generate_hf(model, input_ids, n_generate):
     generation_config = GenerationConfig(
         min_new_tokens=n_generate,
         max_new_tokens=n_generate,
@@ -197,10 +198,10 @@ rounds = [
     {"context": 32, "n_generate": 32},
     {"context": 64, "n_generate": 64},
     {"context": 128, "n_generate": 128},
-    # {"context": 256, "n_generate": 256},
-    # {"context": 512, "n_generate": 512},
-    # {"context": 1024, "n_generate": 1024},
-    # {"context": 2048, "n_generate": 2048},
+    {"context": 256, "n_generate": 256},
+    {"context": 512, "n_generate": 512},
+    {"context": 1024, "n_generate": 1024},
+    {"context": 2048, "n_generate": 2048},
     # {"context": 4096, "n_generate": 4096},
 ]
 

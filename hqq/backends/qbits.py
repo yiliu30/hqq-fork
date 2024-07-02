@@ -212,8 +212,7 @@ def check_range(tensor, dtype):
 
 # ONLY WORKS WITH AXIS=1, group_size= - 1
 def patch_hqq_to_qbits(layer, patch_params=None):
-    if marlin is None:
-        return layer
+    # TODO: Check ITREX
 
     z_shift = 8.0
     hqq_layer = layer.linear_layer if hasattr(layer, "linear_layer") else layer
