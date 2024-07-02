@@ -99,7 +99,7 @@ class QBitsLinear(torch.nn.Module):
         # int_weight:    (K, N),    int8
         # scale:         (K//GS, N), fp32
         # zero:          (K//GS, N), int8
-        assert W.shape == (self.in_features, self.out_features)
+        assert W.shape == (self.in_features, self.out_features), f"Expected {(self.in_features, self.out_features)} but got {W.shape}"
         assert scales.shape == (self.in_features//self.group_size, self.out_features), f"Expected {(self.in_features//self.group_size, self.out_features)} but got {scales.shape}"
         # TODO: What's the shape of W?
         intweight = W.to("cpu")
@@ -175,7 +175,16 @@ class QBitsLinear(torch.nn.Module):
         assert out.shape[-1] == self.out_features
         if self.u is not None:
             # [M, K] @ [1, N] -> [M, 1]
-            addtion = torch.matmul(x.sum(axis=-1, keepdim=True), self.u)
+            if self.group_size != -1:
+                x_orgin_shape = x.shape
+                assert x_orgin_shape[-1] % self.group_size == 0, f"Expected {x_orgin_shape[-1]} % {self.group_size} == 0"
+                new_shape = x_orgin_shape[:-1] + (self.in_features//self.group_size, self.group_size)
+                x = x.reshape(new_shape)
+                x = x.sum(dim=-1, keepdim=False)
+                # x = x.reshape(-1, self.group_size).sum(dim=-1, keepdim=True).reshape(-1, self.in_features//self.group_size)
+                addtion = torch.matmul(x, self.u)
+            else:
+                addtion = torch.matmul(x.sum(axis=-1, keepdim=True), self.u)
             out = out + addtion
             
         # if self.bias is not None:
@@ -226,13 +235,16 @@ def patch_hqq_to_qbits(layer, patch_params=None):
     W_q_s8 =  W_q_u8 - z_shift
     W_q_s8 = W_q_s8.to(torch.int8)
     assert (W_q_s8 + 8 - W_q_u8).max() == 0, "Expected W_q_s8 + 8 == W_q_u8"
-    W_q_s8 = W_q_s8.t_()
+    
+    W_q_s8 = W_q_s8
     check_range(W_q_s8, "int4")
     # W_r = Quantizer.unpack[hqq_layer.meta["packing"]](
     #     hqq_layer.W_q, dtype=hqq_layer.compute_dtype
     # ).t()
     z = hqq_layer.meta["zero"]
-    s = hqq_layer.meta["scale"].t()
+    s = hqq_layer.meta["scale"]
+    group_size = hqq_layer.meta["group_size"]
+    n, k = hqq_layer.meta["shape"]
     
     # W_r = (W_r - z_shift) * s
     # W_r = (W_r - z_shift) * s
@@ -240,15 +252,22 @@ def patch_hqq_to_qbits(layer, patch_params=None):
     #          [K, N] - [K, N]    [K, N]    [1, N]     [1, N]
     # y = X @ ((W_int - z_shift + z_shift - float_z) * scale)
     # y = X @ (W_int - z_shift) * scale + X @ (z_shift - float_z) * scale
+    
+
+    # g = k // group_size
+    
 
     if type(z) in [torch.Tensor, torch.nn.Parameter]:
         z = z.t()
-        u = (s * (-z + z_shift)).view([1, -1])
+        s = s.t()
+        u = (s * (-z + z_shift))
+        u = u.reshape(n, -1).t()
     else:
         u = None
     # print(f"W_q_s8 shape: {W_q_s8.shape}, s shape: {s.shape} u shape: {u.shape if u is not None else None}")
-    
-    qbits_layer = QBitsLinear(W_q_s8, s, u=u, bias=hqq_layer.bias)
+    W_q_s8 = W_q_s8.reshape(n, k).t()
+    s = s.reshape(n, -1).t() 
+    qbits_layer = QBitsLinear(W_q_s8, s, u=u, bias=hqq_layer.bias, groupsize=group_size)
     if hasattr(layer, "linear_layer"):
         del layer.linear_layer.W_q
         del layer.linear_layer.meta

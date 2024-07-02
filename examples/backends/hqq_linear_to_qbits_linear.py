@@ -16,10 +16,10 @@ bs = 32
 in_features = 512 * N
 out_features = 1024 * N
 device = "cpu"
-HAS_BIAS = True
+HAS_BIAS = False
 float_lin = torch.nn.Linear(in_features, out_features, bias=HAS_BIAS)
 compute_dtype = torch.float32
-group_size = None
+group_size = 64
 AXIS = 1
 
 # Quantization settings
